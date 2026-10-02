@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SurveyClient } from "@/components/survey/survey-client";
 import { getCurrentParticipantForSession, fetchSessionByCode } from "@/lib/api/participant";
+import { personalResultHref } from "@/lib/routes";
 import { normalizeDraft } from "@/lib/validation/survey-schema";
 import type { SurveyDraft } from "@/types/survey";
 
@@ -49,7 +50,7 @@ export default function SurveyPage() {
       }
 
       if (current.data.participant.completed_at) {
-        router.replace(`/r/${current.data.participant.id}`);
+        router.replace(personalResultHref(current.data.participant.id));
         return;
       }
 

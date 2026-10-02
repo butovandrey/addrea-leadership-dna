@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { saveDraft, submitSurvey } from "@/lib/api/participant";
+import { personalResultHref } from "@/lib/routes";
 import { BipolarScale } from "@/components/survey/bipolar-scale";
 import { ProgressHeader } from "@/components/survey/progress-header";
 import { RealityRatingList } from "@/components/survey/reality-rating-list";
@@ -126,7 +127,7 @@ export function SurveyWizard() {
           setError(result.error);
           return;
         }
-        router.push(`/r/${result.data.participantId}`);
+        router.push(personalResultHref(result.data.participantId));
       });
       return;
     }

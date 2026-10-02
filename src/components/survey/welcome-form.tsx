@@ -7,6 +7,7 @@ import {
   getCurrentParticipantForSession,
   startParticipant,
 } from "@/lib/api/participant";
+import { personalResultHref } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -41,7 +42,7 @@ export function WelcomeForm({ sessionCode }: Props) {
       if (cancelled) return;
 
       if (current.ok && current.data?.participant.completed_at) {
-        router.replace(`/r/${current.data.participant.id}`);
+        router.replace(personalResultHref(current.data.participant.id));
         return;
       }
       if (current.ok && current.data?.participant && !current.data.participant.completed_at) {

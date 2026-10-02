@@ -1,20 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PersonalDnaView } from "@/components/results/personal-dna-view";
 import { getPersonalResult } from "@/lib/api/participant";
 import type { ResponseRow } from "@/types/survey";
 
-function resolveParticipantIdFromPath(): string | null {
-  if (typeof window === "undefined") return null;
-  const parts = window.location.pathname.split("/").filter(Boolean);
-  const id = parts[1];
-  if (!id || id === "_") return null;
-  return id;
+function resolveParticipantId(searchParams: URLSearchParams): string | null {
+  const fromQuery = searchParams.get("participantId")?.trim();
+  if (fromQuery) return fromQuery;
+  return null;
 }
 
-export default function PersonalResultPage() {
+function PersonalResultContent() {
+  const searchParams = useSearchParams();
   const [state, setState] = useState<
     | { status: "loading" }
     | { status: "error"; message: string }
@@ -30,7 +30,7 @@ export default function PersonalResultPage() {
     let cancelled = false;
 
     void (async () => {
-      const participantId = resolveParticipantIdFromPath();
+      const participantId = resolveParticipantId(searchParams);
       if (!participantId) {
         if (!cancelled) {
           setState({ status: "error", message: "Результат не найден." });
@@ -55,7 +55,7 @@ export default function PersonalResultPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams]);
 
   if (state.status === "loading") {
     return (
@@ -81,5 +81,17 @@ export default function PersonalResultPage() {
       sessionCode={state.sessionCode}
       responses={state.responses}
     />
+  );
+}
+
+export default function PersonalResultPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-xl px-6 py-20 text-[var(--ink-muted)]">Загрузка…</div>
+      }
+    >
+      <PersonalResultContent />
+    </Suspense>
   );
 }
