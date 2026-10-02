@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { saveDraft, submitSurvey } from "@/actions/participant";
+import { saveDraft, submitSurvey } from "@/lib/api/participant";
 import { BipolarScale } from "@/components/survey/bipolar-scale";
 import { ProgressHeader } from "@/components/survey/progress-header";
 import { RealityRatingList } from "@/components/survey/reality-rating-list";

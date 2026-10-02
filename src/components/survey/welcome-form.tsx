@@ -1,21 +1,62 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
-import { startParticipant } from "@/actions/participant";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
+import {
+  fetchSessionByCode,
+  getCurrentParticipantForSession,
+  startParticipant,
+} from "@/lib/api/participant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Props = {
   sessionCode: string;
-  sessionName: string;
 };
 
-export function WelcomeForm({ sessionCode, sessionName }: Props) {
+export function WelcomeForm({ sessionCode }: Props) {
   const router = useRouter();
+  const [sessionName, setSessionName] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function boot() {
+      const session = await fetchSessionByCode(sessionCode);
+      if (cancelled) return;
+
+      if (!session.ok) {
+        setError(session.error);
+        setLoading(false);
+        return;
+      }
+
+      setSessionName(session.data.name);
+
+      const current = await getCurrentParticipantForSession(sessionCode);
+      if (cancelled) return;
+
+      if (current.ok && current.data?.participant.completed_at) {
+        router.replace(`/r/${current.data.participant.id}`);
+        return;
+      }
+      if (current.ok && current.data?.participant && !current.data.participant.completed_at) {
+        router.replace(`/s/${sessionCode}/survey`);
+        return;
+      }
+
+      setLoading(false);
+    }
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [router, sessionCode]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,6 +69,14 @@ export function WelcomeForm({ sessionCode, sessionName }: Props) {
       }
       router.push(`/s/${sessionCode}/survey`);
     });
+  }
+
+  if (loading) {
+    return (
+      <div className="mx-auto flex min-h-[80vh] w-full max-w-2xl items-center justify-center px-6 py-16 text-[var(--ink-muted)]">
+        Загрузка…
+      </div>
+    );
   }
 
   return (
@@ -54,7 +103,7 @@ export function WelcomeForm({ sessionCode, sessionName }: Props) {
 
       <div className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-5 py-4 text-sm leading-relaxed text-[var(--ink-muted)]">
         Индивидуальные ответы не показываются другим участникам. В общем профиле используются только
-        агрегированные данные. Сессия: {sessionName}.
+        агрегированные данные. Сессия: {sessionName || sessionCode}.
       </div>
 
       <form onSubmit={onSubmit} className="mt-10 space-y-4">

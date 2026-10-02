@@ -1,8 +1,9 @@
-import { notFound, redirect } from "next/navigation";
-import { getCurrentParticipantForSession, getSessionByCode } from "@/actions/participant";
+import { DEFAULT_SESSION_CODE } from "@/content/survey";
 import { WelcomeForm } from "@/components/survey/welcome-form";
 
-export const dynamic = "force-dynamic";
+export function generateStaticParams() {
+  return [{ sessionCode: DEFAULT_SESSION_CODE }];
+}
 
 type Props = {
   params: Promise<{ sessionCode: string }>;
@@ -10,16 +11,5 @@ type Props = {
 
 export default async function SessionWelcomePage({ params }: Props) {
   const { sessionCode } = await params;
-  const session = await getSessionByCode(sessionCode);
-  if (!session) notFound();
-
-  const current = await getCurrentParticipantForSession(sessionCode);
-  if (current.ok && current.data?.participant.completed_at) {
-    redirect(`/r/${current.data.participant.id}`);
-  }
-  if (current.ok && current.data?.participant && !current.data.participant.completed_at) {
-    redirect(`/s/${sessionCode}/survey`);
-  }
-
-  return <WelcomeForm sessionCode={session.code} sessionName={session.name} />;
+  return <WelcomeForm sessionCode={sessionCode} />;
 }

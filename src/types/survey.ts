@@ -129,7 +129,8 @@ export type TeamValueStat = {
   min: number;
   max: number;
   sd: number;
-  values: number[];
+  /** Optional; Team DNA RPC no longer returns individual values. */
+  values?: number[];
 };
 
 export type TeamGapStat = {
@@ -156,6 +157,7 @@ export type TeamDnaResult = {
   sessionCode: string;
   sessionName: string;
   completedCount: number;
+  insufficientSample?: boolean;
   topBeliefs: TeamSelectionStat[];
   topPrinciples: TeamSelectionStat[];
   worldviews: TeamWorldviewStat[];

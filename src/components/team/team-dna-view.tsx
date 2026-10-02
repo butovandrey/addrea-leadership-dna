@@ -6,10 +6,12 @@ import type { TeamDnaResult } from "@/types/survey";
 
 type Props = {
   data: TeamDnaResult;
+  onRefresh?: () => void;
 };
 
-export function TeamDnaView({ data }: Props) {
+export function TeamDnaView({ data, onRefresh }: Props) {
   const n = data.completedCount;
+  const insufficient = Boolean(data.insufficientSample) || n < 3;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-14">
@@ -23,21 +25,14 @@ export function TeamDnaView({ data }: Props) {
         </div>
         <div className="text-right">
           <p className="text-sm text-[var(--ink-muted)]">Ответили: {n}</p>
-          <RefreshResultsButton />
+          <RefreshResultsButton onRefresh={onRefresh} />
         </div>
       </div>
 
-      {n === 0 ? (
-        <EmptyState sessionCode={data.sessionCode} />
+      {insufficient ? (
+        <InsufficientSampleState sessionCode={data.sessionCode} count={n} />
       ) : (
         <>
-          {n === 1 ? (
-            <p className="mb-10 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-5 py-4 text-sm leading-relaxed text-[var(--ink-muted)]">
-              Профиль пока основан на ответах 1 участника. По мере заполнения команды картина будет
-              становиться точнее.
-            </p>
-          ) : null}
-
           <Section
             title="Что нас объединяет"
             subtitle="Утверждения и принципы с наибольшей долей выбора среди завершивших."
@@ -81,23 +76,21 @@ export function TeamDnaView({ data }: Props) {
                     <span>{v.rightLabel}</span>
                   </div>
                   <div className="relative h-2 rounded-full bg-[var(--border)]">
-                    {v.values.length > 0 ? (
-                      <>
-                        <div
-                          className="absolute top-0 h-2 rounded-full bg-[var(--accent-soft)]"
-                          style={{
-                            left: `${((v.min - 1) / 6) * 100}%`,
-                            width: `${Math.max(((v.max - v.min) / 6) * 100, 2)}%`,
-                          }}
-                        />
-                        <div
-                          className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-[var(--accent)]"
-                          style={{ left: `calc(${((v.mean - 1) / 6) * 100}% - 7px)` }}
-                        />
-                      </>
-                    ) : null}
+                    <>
+                      <div
+                        className="absolute top-0 h-2 rounded-full bg-[var(--accent-soft)]"
+                        style={{
+                          left: `${((v.min - 1) / 6) * 100}%`,
+                          width: `${Math.max(((v.max - v.min) / 6) * 100, 2)}%`,
+                        }}
+                      />
+                      <div
+                        className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-[var(--accent)]"
+                        style={{ left: `calc(${((v.mean - 1) / 6) * 100}% - 7px)` }}
+                      />
+                    </>
                   </div>
-                  {v.values.length > 1 ? (
+                  {v.sd > 0 ? (
                     <p className="mt-2 text-xs text-[var(--ink-subtle)]">
                       Разброс (SD): {v.sd.toFixed(2)}
                     </p>
@@ -251,10 +244,19 @@ function ConsensusList({
   );
 }
 
-function EmptyState({ sessionCode }: { sessionCode: string }) {
+function InsufficientSampleState({
+  sessionCode,
+  count,
+}: {
+  sessionCode: string;
+  count: number;
+}) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-6 py-10 text-center">
-      <p className="text-[var(--ink-muted)]">Пока никто не завершил опрос.</p>
+      <p className="text-[var(--ink-muted)]">
+        Результаты команды появятся после минимум 3 завершённых ответов.
+      </p>
+      <p className="mt-3 text-sm text-[var(--ink-subtle)]">Сейчас ответили: {count}</p>
       <Link
         href={`/s/${sessionCode}`}
         className="mt-4 inline-flex text-sm font-medium text-[var(--accent)] hover:underline"

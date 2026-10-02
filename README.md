@@ -2,162 +2,143 @@
 
 Управленческий reflection tool для TOP-команды ADDREA перед стратегической встречей.
 
-Это **не** психологический тест и **не** HR-оценка. Приложение помогает увидеть:
-
-- какие убеждения и принципы разделяет команда;
-- как руководители видят устройство компании;
-- ценностные trade-offs;
-- разрыв между «нам это близко» и «мы реально так живём»;
-- где есть консенсус, а где позиции различаются.
+Это **не** психологический тест и **не** HR-оценка.
 
 ## Stack
 
-- Next.js (App Router) + React + TypeScript
+- Next.js (App Router, **static export**) + React + TypeScript
 - Tailwind CSS
-- Supabase (PostgreSQL + RLS)
-- Zustand (survey draft state)
-- Zod (validation)
-- Recharts доступен в зависимостях; MVP Team DNA использует lightweight custom visuals
+- Supabase (PostgreSQL + RLS + SECURITY DEFINER RPCs)
+- Zustand, Zod
+- Recharts (Team DNA worldview chart)
 
-## Prerequisites
-
-- Node.js 20+
-- npm
-- Аккаунт [Supabase](https://supabase.com)
-- (для production) [Vercel](https://vercel.com)
+Приложение — **fully static frontend**. Node/server runtime не нужен.  
+Service role **не используется**.
 
 ## Public URLs
 
 | Назначение | Path |
 |---|---|
-| Welcome / start | `/s/addrea-top` |
-| Survey wizard | `/s/addrea-top/survey` |
-| Personal DNA | `/r/[participantId]` |
-| Team DNA | `/t/addrea-top` |
-
-Корень `/` редиректит на `/s/addrea-top`.
+| Welcome / start | `/s/addrea-top/` |
+| Survey wizard | `/s/addrea-top/survey/` |
+| Personal DNA | `/r/<participantId>/` |
+| Team DNA | `/t/addrea-top/` |
 
 ## Environment variables
 
-Скопируйте `.env.example` → `.env.local`:
+Оставить только:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-| Variable | Where used |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | browser + server |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser + server (RLS locked down) |
-| `SUPABASE_SERVICE_ROLE_KEY` | **server only** — writes participants/responses, Team DNA aggregation |
+**Удалить / не задавать:**
 
-`SUPABASE_SERVICE_ROLE_KEY` никогда не должен попадать в client bundle.
+```env
+SUPABASE_SERVICE_ROLE_KEY
+```
 
 ## Supabase setup
 
-1. Создайте новый Supabase project.
-2. Откройте **SQL Editor**.
-3. Выполните миграцию:
+1. Создайте project (или используйте существующий).
+2. SQL Editor → выполните по порядку:
+   1. `supabase/migrations/001_init.sql`
+   2. `supabase/seed.sql`
+   3. `supabase/migrations/002_static_client_rls_rpc.sql`
+3. В API settings скопируйте **URL** и **anon key** в `.env.local`.
 
-```bash
-# содержимое файла:
-apps/leadership-dna/supabase/migrations/001_init.sql
-```
-
-4. Выполните seed:
-
-```bash
-# содержимое файла:
-apps/leadership-dna/supabase/seed.sql
-```
-
-5. В **Project Settings → API** скопируйте URL, `anon` key и `service_role` key в `.env.local`.
-
-### Что делает seed
-
-- Session: `ADDREA Leadership Team` / code `addrea-top` / `active = true`
-- Каталог questions + options (синхронизирован с `src/content/survey.ts`)
-
-UI читает question bank из TypeScript config; БД-каталог нужен для будущих sessions и audit.
+> `002` включает RLS deny на `participants`/`responses` и RPC:  
+> `start_participant`, `get_participant`, `save_draft`, `submit_survey`,  
+> `get_personal_result`, `get_team_dna`.
 
 ## Local run
 
 ```bash
 cd apps/leadership-dna
 cp .env.example .env.local
-# заполните env
+# заполните NEXT_PUBLIC_* 
 
 npm install
 npm run dev
 ```
 
-Откройте: http://localhost:3000/s/addrea-top
+Откройте: http://localhost:3000/s/addrea-top/
 
 ### Checks
 
 ```bash
 npm run typecheck
+npm run lint
 npm test
 npm run build
 ```
 
-## Production build
+## Production / static build
 
 ```bash
 cd apps/leadership-dna
 npm run build
-npm start
 ```
 
-## Vercel deploy
+**Output directory:** `apps/leadership-dna/out/`
 
-1. Создайте **отдельный** Vercel project.
-2. Root Directory: `apps/leadership-dna`
-3. Framework: Next.js
-4. Добавьте env variables (те же три).
-5. Deploy.
-6. Публичная ссылка для команды: `https://<your-domain>/s/addrea-top`
-7. Team DNA: `https://<your-domain>/t/addrea-top`
+Это чистый static site (`output: 'export'`).
 
-## Как создать новую session вручную
+## Deploy (бесплатный static hosting)
 
-В Supabase SQL Editor:
+Подходит:
+
+- Cloudflare Pages
+- Netlify
+- GitHub Pages (+ redirects)
+- Firebase Hosting / любой S3+CDN
+
+### Рекомендуемая настройка
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Publish directory | `out` |
+| Root directory (monorepo) | `apps/leadership-dna` |
+| Env | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+
+### SPA rewrite для Personal DNA
+
+Файл `public/_redirects` уже содержит:
+
+```text
+/r/*  /r/_/index.html  200
+```
+
+Это нужно, чтобы hard-refresh `/r/<uuid>/` открывал shell и client читал id из URL.
+
+## Privacy model (кратко)
+
+- Token участника: `localStorage` key `ldna_access_token`
+- Raw responses чужих участников недоступны anon (RLS deny + RPC)
+- Team DNA: только агрегаты; при `< 3` completed — `insufficientSample`, без детальных секций и open answers
+- Personal DNA: только свои ответы (token + participant id)
+
+## Как создать новую session
 
 ```sql
-insert into sessions (name, code, active)
+insert into public.sessions (name, code, active)
 values ('Новая сессия', 'my-session-code', true);
 ```
 
-Ссылка: `/s/my-session-code`  
-Team DNA: `/t/my-session-code`
-
-Question bank пока общий (из `src/content/survey.ts` + seed). Для другой анкеты потребуются изменения content/seed — вне текущего MVP.
-
-## Security model (MVP)
-
-- Participant access token хранится в **httpOnly cookie** (`ldna_access_token`).
-- Raw responses других участников **не** отдаются в browser.
-- Team DNA считается **только server-side** через service role.
-- RLS на `participants` / `responses` запрещает anon SELECT/INSERT/UPDATE.
-- После `completed_at` draft нельзя менять; submit идемпотентен.
-
-## Privacy copy
-
-На Welcome явно указано: индивидуальные ответы не показываются другим; в Team DNA — только агрегаты. Имя хранится, чтобы организатор понимал, кто прошёл опрос.
+Для static export новый `sessionCode` нужно добавить в `generateStaticParams` (сейчас зашит `addrea-top`) и пересобрать.
 
 ## Troubleshooting
 
 | Проблема | Что проверить |
 |---|---|
-| «Сессия не найдена» | seed выполнен? `sessions.code = 'addrea-top'`, `active = true` |
-| «Missing SUPABASE_…» | `.env.local` / Vercel env |
-| После refresh теряется прогресс | cookie выставлен? same-site / HTTPS в prod |
-| «Нет доступа к результату» | другой браузер / cookie очищен — личный результат привязан к cookie |
-| Team DNA пустой | есть ли участники с `completed_at` |
-| Build fail без env | задайте placeholder env для `next build` или соберите с реальными ключами |
+| SESSION_NOT_FOUND | seed + `002` применены? `code = addrea-top`, `active = true` |
+| Missing NEXT_PUBLIC_… | `.env.local` / hosting env |
+| Team DNA пустой / «минимум 3» | нужно ≥3 `completed_at` |
+| `/r/<uuid>` 404 после refresh | `_redirects` на хостинге |
+| FORBIDDEN на personal | другой браузер / очищен localStorage |
 
-## Out of scope (намеренно)
+## Out of scope
 
-Auth/SSO, admin panel, AI interpretation, PDF/PPT export, email/Slack, редактор вопросов, department comparison, personality scoring.
+Auth/SSO, admin panel, AI summary, PDF export, service role на клиенте.

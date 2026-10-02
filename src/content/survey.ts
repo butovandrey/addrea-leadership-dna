@@ -2,7 +2,8 @@ import type { SurveyDraft, SurveyOption, SurveyQuestion, WizardPhase } from "@/t
 
 export const DEFAULT_SESSION_CODE = "addrea-top";
 export const DEFAULT_SESSION_NAME = "ADDREA Leadership Team";
-export const ACCESS_COOKIE_NAME = "ldna_access_token";
+/** localStorage key for participant access token (static hosting). */
+export const ACCESS_TOKEN_STORAGE_KEY = "ldna_access_token";
 export const OPEN_ANSWER_MAX = 300;
 
 export const WIZARD_PHASES: WizardPhase[] = [

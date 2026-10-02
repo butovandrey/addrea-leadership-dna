@@ -237,7 +237,8 @@ export function getPolarizingTopics(
   const total = responsesByParticipant.length;
 
   for (const value of getTeamValueStats(responsesByParticipant)) {
-    if (value.values.length < 2) continue;
+    const sampleSize = value.values?.length ?? 0;
+    if (sampleSize < 2) continue;
     topics.push({
       kind: "value",
       category: "values",
